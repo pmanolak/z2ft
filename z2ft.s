@@ -121,8 +121,21 @@ StopTitleTrack := $82cf
 UpdateGame := $c2ca
 SwitchToBank0 := $ffc5
 
+.ifndef RANDOMIZER
+
 CurBank8 := $7b2
 CurBankA := $7b3
+
+.else
+
+; The randomizer changed where it puts these after z2ft was written.
+CurBank8 := $6380
+CurBankA := $6381
+
+.endif
+
+; This is set by Z2R in the randomizer build and must be at a hard-coded address
+RealCurMapArea := $69ff
 
 WorldRegionDivYs := $cb32
 
@@ -190,8 +203,6 @@ FtTrackToPlay: .byte 0 ; $80 if none
 FtBankToPlay: .byte 0
 FtAddrToPlay: .word 0
 
-RealCurMapArea: .byte 0
-
 SavedBhopTemps: .res NUM_BHOP_TEMPS
 
 SavedFtTrack: .byte 0 ; $80 if none
@@ -236,6 +247,9 @@ inc_banks $e, $1f
 patch_call PATCH_CALL_UPDATE_TITLE_MUSIC, UpdateTitleMusic
 patch_call PATCH_CALL_UPDATE_GAME_MUSIC, UpdateGameMusic
 
+.ifndef RANDOMIZER
+
+; In Z2R this is set in its own code
 patch_call PATCH_CALL_SAVE_REAL_MAP_AREA1, SaveRealMapArea	
 patch_call PATCH_CALL_SAVE_REAL_MAP_AREA2, SaveRealMapArea2
 
@@ -251,6 +265,8 @@ patch_segment PATCH_SAVE_REAL_MAP_AREA, $10, $a970, $a97f
 	sta RealCurMapArea
 	rts
 .endproc ; SaveRealMapArea
+
+.endif
 
 patch_segment PATCH_HANDLE_NATIVE_TRACK_END, $12, $9b4f, $9b60
 .scope
@@ -325,7 +341,7 @@ patch_segment PATCH_RESTART_LAST_BOSS_TRACK, 9, $988e, $9896
 .segment "BANKC_LOW"
 	inc_bank_part SOUND_BANK, 0, $78c
 	
-	; $874 bytes available
+	; $674 bytes available
 	
 UpdateSound:
 	jmp UpdateSoundBody
@@ -796,15 +812,12 @@ UpdateSound:
 	jmp @EncounterCommon
 	
 @FixedEncounter:
-	lda RealCurMapArea
-	sta Temp
-	
 	lda CurWorldMap
 	and #$3
 	lsr a
 	ror a
 	ror a
-	ora Temp
+	ora RealCurMapArea
 	tax
 	
 	lda EncounterTrackMap, x
