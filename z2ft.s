@@ -150,6 +150,7 @@ EncounterWorldY := $6a3e
 TitleTrackToPlay := $ea
 TrackToPlay := $eb
 ComplexSfxToPlay := $ec
+NoiseSfxToPlay := $ed
 Square2SfxToPlay := $ee
 
 CurNativeTitleTrack := $e8
@@ -337,7 +338,27 @@ patch_segment PATCH_RESTART_LAST_BOSS_TRACK, 9, $988e, $9896
 	
 :
 	
+; The fire SFX is started every frame a fire is on screen and simply sets the noise registers without setting $7fd to indicate a SFX is playing. Make it set $7fd so music doesn't interfere.
+patch_segment PATCH_CHECK_NOISE_SFX, $b, $95db, $95e5
+	; $a bytes
+.org $95db
+.proc PatchCheckNoiseSfx
+	; *ed is in Y, *7fd >> 6 is in A, *ed:carry is >>= 7
+	; Can clobber all
+
+	; Highest precedence: start fire ($40)
+	bcc @NoStartFire
 	
+@StartFire:
+	sty CurNoiseSfx
+	bcs $9597
+	
+@NoStartFire:
+	jmp PatchCheckNoiseSfxCont
+.endproc ; PatchCheckNoiseSfx
+
+	.res 1
+
 .segment "BANKC_LOW"
 	inc_bank_part SOUND_BANK, 0, $78c
 	
@@ -1041,6 +1062,37 @@ TrackFlags:
 	.byte TRACK_FLAG_FANFARE ; 11 (game complete fanfare)
 	.byte TRACK_FLAG_FANFARE ; 12 (Dark Link)
 	.res MAX_TRACKS - $13, 0
+
+.proc PatchCheckNoiseSfxCont
+	; *ed is in Y, *7fd >> 6 is in A, *ed:carry is >>= 7
+	; Can clobber all
+	; Order of precedence: handle fire ($40) / boomerang ($80) > start boomerang (yes, really)
+
+	; $a bytes
+	lsr a
+	bcs @HandleFire
+	bne @HandleBoomerang
+	
+	lsr NoiseSfxToPlay
+	bcs @StartBoomerang
+	
+	rts
+
+@HandleBoomerang:
+	; 3 bytes
+	jmp $960c
+	
+@HandleFire:
+	; 6 bytes
+	lda #$0
+	sta CurNoiseSfx
+	
+	rts
+	
+@StartBoomerang:
+	; 3 bytes
+	jmp $9604
+.endproc ; PatchCheckNoiseSfxCont
 
 BANKC_LOW_FREE_SPACE:
 

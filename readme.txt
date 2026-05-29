@@ -70,8 +70,7 @@ z2mmc5, z2lagpatch, and z2ft use the following memory ranges that were previousl
 
 They use the following ROM ranges that were previously free:
 - 2980-298f
-- 1879c-18bcb
-- 18c10-1900f
+- 1879c-1900f
 - 19e10-1a00f
 - 1feba-1fedf
 - 3e010-4000f is the FT code bank
